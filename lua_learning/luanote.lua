@@ -1,6 +1,9 @@
-﻿--Allen的lua学习笔记
+﻿-- Allen的lua学习笔记
 
---使用SciTE编辑器遇到中文乱码，解决方法参照：http://blog.csdn.net/yao_yu_126/article/details/8661988
+-- 使用SciTE编辑器遇到中文乱码，解决方法参照：http://blog.csdn.net/yao_yu_126/article/details/8661988
+
+-- Scite的其他配置参考：http://www.360doc.com/content/11/0223/12/496343_95360892.shtml
+--							   以及：https://my.oschina.net/mickelfeng/blog/199938
 
 
 
@@ -695,13 +698,13 @@ for str in file:lines() do
 end
 print(io.type(file))				  -- 使用文件句柄迭代时，不会在读取所有内容后自动关闭文件
 io.close(file)
---[[
+
 print('-------io.write写文件-------')
 file=io.open('testIO.txt','a')
 io.output(file)
 io.write('\n我以附加方式打开只写文件，并在文件的最后一行加上这句话')
 io.close(file)
---]]
+
 print('-------tmpfile读写文件--------')
 tempfile=io.tmpfile()				  -- 创建临时文件，好像是以r+方式打开（毕竟可读可写）
 tempfile:write('临时文件第一行\n')
@@ -719,26 +722,103 @@ print(tempfile:read('*a'))
 
 
 
+-------------------------------------------错误处理--------------------------------------------
+
+-- 主要包括将错误信息直接抛出到console的assert、error函数
+-- 以及封装错误信息的pcall、xpcall函数
+
+-----------------------------------------------------------------------------------------------
 
 
 
+-------------assert--------------
+--[[
+local function add(a,b)
+   assert(type(a) == "number", "a 不是一个数字")   -- assert应该叫‘断言’吧，第一个参数为判断条件，第二个参数为错误反馈信息
+   assert(type(b) == "number", "b 不是一个数字")
+   return a+b
+end
+add(a,2)
+--]]
+---------------------------------
 
 
 
+--------------error--------------
+--[[
+function test_error()
+print('请输入一个数字：')
+a=io.read('*n')
+
+if type(a)~='number' then
+	error('一定要输入数字哦！',0)  	-- 参数2控制输出错误信息时，在其前面增加的内容。	0：不输出错误位置   1：调用error的未知   2：指出调用error的函数（实测没什么用？）
+else
+	print('你输入的数字是：',a)
+end
+end
+
+test_error()
+--]]
+---------------------------------
 
 
 
+--------------pcall--------------
+--[[
+-- 调用格式：pcall(函数，参数)
+-- 个人理解：protected call顾名思义，保护模式运行函数，如果出错不会抛出错误信息到console上，而是把错误信息封装进返回值传回。
+-- 无错误，返回true。调用出错，返回(true,错误信息)，错误信息根据系统预置或assert、error自定义
+-- 据说多用在与C的交互
+
+function f(i)
+--	if type(i)~='number' then
+--		error('错错错！')
+--	end
+	assert(type(i)=='number','错错错！')
+end
+
+a,b,c=pcall(f,'a')
+print(a,b)
+--]]
+---------------------------------
 
 
 
+-------------xpcall--------------
+--[[
+--xpcall在pcall的基础上追加传入一个错误处理函数，输出错误信息
+-- 找到一个讲得比较清楚的：http://blog.csdn.net/zz7zz7zz/article/details/38848383
 
+local fun=function ( ... )
+    local a=1;          -- 注释这里决定运行是否出错
+    print(a+1);
+   -- return a+1;
+end
 
+tryCatch=function(fun)
+    local ret,errMessage=pcall(fun);
+--	print('str' or true,type('str' or true))  	-- 逻辑运算符左边是str型：(str1 or str2/bool)=str1,（str1 and str2/bool）=str2/bool
+												-- 逻辑运算符左边是bool型，逻辑优先级：nil < false < str < true
+    print("ret:" .. (ret and "true" or "false" )  .. " \nerrMessage:" .. (errMessage or "null"));
+end			-- 明明可以用tostring解决的问题，不知道这个例子为什么要用上述浮夸的逻辑运算实现，姑且当作一个小技巧记一下吧
 
+xTryCatchGetErrorInfo=function()
+    print(debug.traceback());		-- debug.traceback()根据调用栈来构建一个扩展的错误消息
+end
+xTryCatch=function(fun)
+    local ret,errMessage=xpcall(fun,xTryCatchGetErrorInfo);
+    print("ret:" .. (ret and "true" or "false" )  .. " \nerrMessage:" .. (errMessage or "null"));
+end
 
+print("\n------ pcall ------\n")
+tryCatch(fun);
 
+print("\n------ xpcall ------\n")
+xTryCatch(fun);
 
-
-
+print("\n--------------------\n")
+--]]
+---------------------------------
 
 
 

@@ -767,7 +767,7 @@ test_error()
 --[[
 -- 调用格式：pcall(函数，参数)
 -- 个人理解：protected call顾名思义，保护模式运行函数，如果出错不会抛出错误信息到console上，而是把错误信息封装进返回值传回。
--- 无错误，返回true。调用出错，返回(true,错误信息)，错误信息根据系统预置或assert、error自定义
+-- 无错误，返回true。调用出错，返回(false,错误信息)，错误信息根据系统预置或assert、error自定义
 -- 据说多用在与C的交互
 
 function f(i)
@@ -777,7 +777,7 @@ function f(i)
 	assert(type(i)=='number','错错错！')
 end
 
-a,b,c=pcall(f,'a')
+a,b=pcall(f,'a')
 print(a,b)
 --]]
 ---------------------------------
@@ -786,11 +786,11 @@ print(a,b)
 
 -------------xpcall--------------
 --[[
---xpcall在pcall的基础上追加传入一个错误处理函数，输出错误信息
+-- xpcall在pcall的基础上追加传入一个错误处理函数，在错误处理函数中往往结合Debug库中的函数，输出调用信息。
 -- 找到一个讲得比较清楚的：http://blog.csdn.net/zz7zz7zz/article/details/38848383
 
 local fun=function ( ... )
-    local a=1;          -- 注释这里决定运行是否出错
+--    local a=1;          -- 注释这里决定运行是否出错
     print(a+1);
    -- return a+1;
 end
@@ -824,6 +824,147 @@ print("\n--------------------\n")
 
 
 
+
+
+
+
+------------------------------------------------Debug-----------------------------------------------
+
+-- 1.这里的Debug不同于以前学C时用IDE打断点调试，是一种在程序中添加调试函数来设定参数、获得反馈的调试方法
+-- 2.调试函数多来自Debug库。Debug库的一个重要思想是栈级别(stack level),它用来表示活动函数（即正在运行，
+--   还没有return的函数）的层级，Debug的库函数栈级别为0，调用库方法的函数a级别为1，调用函数a的函数级别为2，
+--   以此类推
+
+-- 不错的参考：http://blog.csdn.net/mydreamremindme/article/details/51211063
+----------------------------------------------------------------------------------------------------
+
+
+
+------默认栈跟踪函数 debug.traceback------
+--[[
+function myfunction()
+	print(debug.traceback('栈跟踪',1))		-- debug库提供的默认栈跟踪函数,返回栈的回溯过程。
+											-- 第一个参数是显示在最前面的文字，第二个参数是开始回溯的栈级
+end
+
+myfunction()
+--]]
+------------------------------------------
+
+
+
+----利用debug.getinfo自写traceback函数----
+--[[
+function get_info()
+	tab=debug.getinfo(1,'nSufl')			-- getinfo名为自省函数，返回指定栈级别中函数的信息表。参数1指定函数栈级别（函数名），参数2指定记录信息
+	print('--以下是getinfo返回表的域--')
+	print('name:',tab.name)					-- 函数名
+	print('namewhat',tab.namewhat)			-- 表示上一个字符串是什么，'global' or 'local' or 'method' or 'field' or nil
+	print('source:',tab.source)				-- 函数被定义的地方，@+文件名
+	print('short_src:',tab.short_src)		-- source的简短版本（实际好像就是去掉@）
+	print('linedefined:',tab.linedefined)	-- 函数被定义处的行号
+	print('what:',tab.what)					-- 标明函数类型 ，'lua' or 'C' or 'main'
+	print('nups:',tab.nups)					-- 函数upvalue的个数
+	print('func:',tab.func)					-- 函数本身
+	print('currentline',tab.currentline)	-- 这个时刻，函数所在的行号
+	print('--------------------------')
+end
+
+function traceback()
+	local level = 1
+	while true do
+		local info = debug.getinfo(level, "Sl") -- 栈级别1：traceback  栈级别2:main  栈级别3：？？？这个C函数是用C写的解释器？
+		if not info then
+			break
+		end
+		if info.what == "C" then
+			print(level, "C function")
+		else
+			print(string.format("[%s]:%d",info.short_src, info.currentline))
+		end
+		level = level + 1
+	end
+end
+
+get_info()
+traceback()
+--]]
+------------------------------------------
+
+
+
+-----getlocal & setlocal-----
+--[[
+-- getlocal和setlocal获得、设定活动函数的局部变量
+function foo (a,b)
+	local x
+	do local c = a - b	-- do..end结构，显示定义变量的作用域
+	end
+
+	local a = 1
+	while true do
+		local name, value = debug.getlocal(1, a)  -- getlocal参数1：栈级别  参数2：局部变量索引    返回值1：变量名  返回值2：变量值
+		if not name then
+			break
+		end
+		print(name, value)
+		a = a + 1
+	end
+	print('把索引为2的局部变量修改为100:')
+	debug.setlocal(1,2,100)
+	print(string.format('b的值变为：%d',b))
+end
+
+foo(10,20)
+--]]
+-----------------------------
+
+
+
+------getupvalue & setupvalue------
+--[[
+-- 获得/设置闭包的upvalues，与局部变量不同的是，即使闭包不在活动状态，它依然有upvalues(因而不需要指定栈级别)
+function newCounter()
+	local n=0
+	local k=0
+	return function()
+				k=n
+				n=n+1
+				return n
+			end
+end
+
+
+counter=newCounter()
+print(counter())
+print(counter())
+
+local i=1
+
+repeat
+	name,val=debug.getupvalue(counter,i)  		 -- 返回闭包counter的第i个upvalue的名字和值
+	if name then
+		print('index',i,name,'=',val)
+			if name=='n' then
+				debug.setupvalue(counter,2,10)   -- 将闭包counter的第二个upvalue（即k）设为10
+			end
+		i=i+1
+	end
+until not name
+
+print(counter())
+--]]
+-----------------------------------
+
+
+
+----只知道变量名，要找到这个变量----
+
+-- 1.首先怀疑是某个函数的局部变量，用debug.getlocal(1，index)查找
+-- 2.其次怀疑是这个函数所在闭包的upvalue，用debug.getupvalue(func)查找,func通过getinfo(2).func获取
+-- 3.最后怀疑是全局变量，用debug.getfenv(func)查找
+
+-----------------------------------
 
 
 

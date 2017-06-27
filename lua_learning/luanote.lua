@@ -967,6 +967,51 @@ print(counter())
 -----------------------------------
 
 
+------sethook & gethook------
+--[[
+-- 钩子的目的：监控call、return、line、count事件
+-- sethook(hook_function,event)    hook_function:钩子函数，event发生时调用；event被监视的事件
+-- call：调用函数时发生；return：函数返回时发生；line:执行新行代码时发生；
+
+function trace(event,line) -- 钩子函数接收：参数1事件、参数2行号(只有line事件有)
+	local s=debug.getinfo(2).short_src
+	print(s..':'..line)
+end
+print('----sethook----')
+debug.sethook(trace,'l')
+print('hello')
+print(debug.gethook(1))		-- 查看指定栈级别下的钩子，返回值为 [钩子函数，钩子掩码，钩子计数]
+print('lua')
+debug.sethook()
+print('!')
+print('---------------')
+
+-- ‘可选的第三个参数是一个数字，描述我们打算获取 count事件的频率’没太明白
+--]]
+-----------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

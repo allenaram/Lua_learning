@@ -828,6 +828,7 @@ print("\n--------------------\n")
 
 
 
+
 ------------------------------------------------Debug-----------------------------------------------
 
 -- 1.这里的Debug不同于以前学C时用IDE打断点调试，是一种在程序中添加调试函数来设定参数、获得反馈的调试方法
@@ -989,6 +990,62 @@ print('---------------')
 -- ‘可选的第三个参数是一个数字，描述我们打算获取 count事件的频率’没太明白
 --]]
 -----------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------垃圾回收--------------------------------------------------
+
+-- 1.垃圾收集器间歇率，控制新一轮垃圾收集前要等待多久，100以内无等待，200表示内存使用翻倍时启动垃圾收集
+-- 2.垃圾收集器步进倍率，控制收集器运行速度相对于内存分配速度的倍率，默认200表示垃圾收集速度是内存分配速度的两倍
+-- 3.垃圾收集器步长，一轮垃圾收集中，一次迭代跨越的内存数
+-- 4.lua的垃圾收集自动完成，也可以手动用collectgarbage('collect')显式回收
+-- 5.对垃圾回收器的设置也用collectgarbage完成
+
+-- 参考：http://wiki.jikexueyuan.com/project/lua/garbage-collection.html
+-- 		 http://colen.iteye.com/blog/578146
+
+----------------------------------------------------------------------------------------------------------
+
+
+
+-----collectgarbage-----
+
+mytable = {"apple", "orange", "banana"}
+
+print('count1:',collectgarbage("count"))		-- 返回当前程序使用的内存总量，以KB为单位
+
+mytable = nil
+
+print('count2:',collectgarbage("count"))
+
+print(collectgarbage("collect"))				-- 运行一个完整的垃圾回收周期，返回值有什么含义？
+
+print('count3:',collectgarbage("count"))		-- 显然，count2运行时，新一轮垃圾回收还没有启动，mytable的内存还没有被释放。到了count3，已经用collect显式启动回收，mytable的内存不复存在
+
+-- collectgarbage('setpause',arg)				-- 修改间歇率
+-- collectgarbage('setstepmul',arg)				-- 修改步进倍率
+-- collectgarbage('step',arg)					-- 修改步长
+-- collectgarbage('stop')
+-- collectgarbage('restart')
+------------------------
+
+
+
+
+
+
+
+
+
 
 
 

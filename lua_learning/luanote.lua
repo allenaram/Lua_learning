@@ -5,6 +5,8 @@
 -- Scite的其他配置参考：http://www.360doc.com/content/11/0223/12/496343_95360892.shtml
 --							   以及：https://my.oschina.net/mickelfeng/blog/199938
 
+-- lua中文手册：http://www.cnblogs.com/lyf806833/p/4776044.html
+
 
 
 ---------------------------------------基本函数----------------------------------------------
@@ -55,6 +57,7 @@ fun1=function(n1,n2)
 	sum=n1+n2
 	print(sum)
 end
+
 
 fun1(1,2)
 --]]
@@ -797,7 +800,7 @@ end
 
 tryCatch=function(fun)
     local ret,errMessage=pcall(fun);
---	print('str' or true,type('str' or true))  	-- 逻辑运算符左边是str型：(str1 or str2/bool)=str1,（str1 and str2/bool）=str2/bool
+	--print(false or 2,type(false or 2))  	-- 逻辑运算符左边是str型：(str1 or str2/bool)=str1,（str1 and str2/bool）=str2/bool
 												-- 逻辑运算符左边是bool型，逻辑优先级：nil < false < str < true
     print("ret:" .. (ret and "true" or "false" )  .. " \nerrMessage:" .. (errMessage or "null"));
 end			-- 明明可以用tostring解决的问题，不知道这个例子为什么要用上述浮夸的逻辑运算实现，姑且当作一个小技巧记一下吧
@@ -1018,7 +1021,7 @@ print('---------------')
 
 
 -----collectgarbage-----
-
+--[[
 mytable = {"apple", "orange", "banana"}
 
 print('count1:',collectgarbage("count"))		-- 返回当前程序使用的内存总量，以KB为单位
@@ -1036,6 +1039,7 @@ print('count3:',collectgarbage("count"))		-- 显然，count2运行时，新一�
 -- collectgarbage('step',arg)					-- 修改步长
 -- collectgarbage('stop')
 -- collectgarbage('restart')
+--]]
 ------------------------
 
 
@@ -1047,26 +1051,219 @@ print('count3:',collectgarbage("count"))		-- 显然，count2运行时，新一�
 
 
 
+-------------------------------------------------面向对象-------------------------------------------------
+
+--  1.回顾一下面向对象的核心思想
+
+-- 【类成员属性】
+--     类成员属性有public、protected、private三种，public属性的成员谁都可以访问，protected和private的只有类成员
+-- 可以访问而对象无法访问。protected属性的成员在继承类中可以访问，private属性的成员无法访问。
+
+-- 【继承】
+--	public继承：   public -> public       protected -> protected
+--  protected继承：public -> protected    protected -> protected
+--  private继承：  public -> private      protected -> private
+--  基类的private成员在派生类中均无法访问
+
+-- 【多态】
+--     将需要“多态”的函数定义为虚函数（virtual），创建一个指向基类对象（虚函数表vt）的指针vptr，需要调用哪个派生类
+-- 的同名函数，就将这个派生类的地址赋给vptr，基类vt中的多态函数地址会被覆盖，然后就可以直接用基类对象调用派生类中的多
+-- 态函数。
+
+-- 参考：http://www.cnblogs.com/fzhe/archive/2012/12/25/2832250.html
+--		 http://www.cnblogs.com/BeyondAnyTime/archive/2012/07/22/2603760.html
+--       http://www.cnblogs.com/ChenZhongzhou/p/5682776.html
+
+
+-- 2.lua实际没有类的概念，所谓的类只是用lua现成的机制模拟类的概念。lua中的类和对象以table来实现。
+-- 3.lua中类的实例化、类的继承，都可以通过元表metatable实现
+
+-- 参考：http://www.jb51.net/article/55823.htm
+
+----------------------------------------------------------------------------------------------------------
 
 
 
+---------lua中的类---------
+--[[
+print('----简单的类----')
+Account = {balance = 0}
+function Account.withDraw(self, v)      -- 使用self参数，防止函数只能针对特定类Account工作
+	self.balance = self.balance - v
+end
+
+print(Account.balance) 					-- lua的类即使没有实例化为对象，也可以调用类本身
+a = Account
+Account = nil
+a.withDraw(a, 100)
+print(a.balance)
+
+
+print('----用:隐藏self参数----')
+Account = {balance = 0}
+function Account:withDraw(v) 			-- 使用冒号隐藏self参数
+	self.balance = self.balance - v
+end
+
+a = Account
+Account = nil
+a:withDraw(100) 						-- 调用时，也需要冒号
+print(a.balance)
+--]]
+----------------------------
 
 
 
+--------------lua中的类和对象--------------
+--[[
+-- 1.将类实例化为对象，只需把类设为对象的元表中的__index元方法
+-- 2.对象在引用类中的元素、方法时，找不到会去元表（类）中找
+-- 3.同一个类实例化的两个对象，它们中的同名元素是完全不同的变量
+
+local Account = {value = 0}
+function Account:new(o)				-- 构造函数
+	o = o or {}  					-- 如果用户没有提供table，则创建一个
+	setmetatable(o, self)			-- 为什么要把Account先设成元表，再将Account设为元表中的__index元方法？
+--                                     我试着将一个空表b设为元表，再把Account设为b的__index元方法，结果没有任何区别。怀疑这样写仅仅是为了方便
+	self.__index = self
+	return o
+end
+
+function Account:display()
+	self.value = self.value + 100	-- 执行第一次a:display时，这里的self是a，等号右边的a.value由于找不到，故引用了Account.value的值，而等号左边的a.value则新创建
+	print(self.value)
+end
+
+local a = Account:new{}				-- 这里使用Account类创建了一个对象a
+a:display()
+a:display()
+local b=Account:new{}
+b:display()							-- b和a中的value是独立的，可以看出对象a和b独立
+--]]
+-------------------------------------------
 
 
 
+--------------lua中类的继承-------------
+--[[
+-- lua中类的继承，同类的实例化没有区别，因为lua中的类本身也是对象
+
+Shape={lens=0,width=0}					-- 基类Shape
+function Shape:new(lens,width)
+	o={}
+	setmetatable(o,self)
+	self.__index=self
+	self.lens=lens or 0
+	self.width=width or 0
+	return o
+end
+
+function Shape:print_area()
+	local area=self.lens*self.width
+	print(area)
+end
+
+Square=Shape:new()						-- 派生类Square
+
+function Square:new(side)				-- 派生类新增函数
+	o={}
+	setmetatable(o,self)
+	self.__index=self
+	return Shape:new(side,side)
+end
+
+s1=Square:new(10)						-- 正方形对象s1
+s1:print_area()
+s2=Shape:new(10,20)						-- 长方形对象s2
+s2:print_area()
+--]]
+----------------------------------------
 
 
 
+---------------多继承---------------
+--[[
+-- 核心是将一个查找函数设为派生类元表的__index元方法，查找函数返回被引用的基类元素（变量或函数）
+
+------基类CA------
+local CA={}
+function CA:new(o)
+	o=o or {}
+	setmetatable(o,self)
+	self.__index=self
+	return o
+end
+
+function CA:setName(name)
+	self.name=name or'no name'
+end
+------基类CB-----
+local CB={}
+function CB:new(o)
+	o=o or {}
+	setmetatable(o,self)
+	self.__index=self
+	return o
+end
+
+function CB:getName()
+	return self.name
+end
+-----继承函数-----
+function createClass(...)
+	local C={}
+	local parents={...}
+	setmetatable(C,{__index=function(t,k) return search(k,parents) end})
+
+	function C:new(o)				-- 用于创建对象或进一步继承
+		o=o or {}
+		setmetatable(o,self)
+		self.__index=self
+		return o
+	end
+
+	return C
+end
+
+function search(k,parentslist) 		-- 在多个基类中查找调用的字段，引用为变量则返回变量值，引用为函数则返回函数本身
+	for i=1,#parentslist do
+		local v=parentslist[i][k]
+		if v then
+			print('search函数中返回的v为：',v)				-- 例如调用c：setName时，此处返回的v为函数CA.setName
+			return v
+		end
+	end
+end
+
+-----多继承-----
+local C=createClass(CA,CB)			-- 创建类C，C为CA和CB的派生类
+c=C:new()							-- 创建类C的对象c
+print('CA.setName:',CA.setName)
+c:setName('Allen')
+print('CB.getName:',CB.getName)
+print(c:getName())
+--]]
+------------------------------------
 
 
 
+---------用闭包保护类成员变量---------
+--[[
+-- 普通的类直接定义一个表，这里则是定义了一个闭包
+-- 将要保护的成员存在self表内，将可供外部调用的函数存在另一个表内返回
+-- 但是用闭包实现类，似乎就不能继承了
+function newObject(defaultName)
+	local self = {name = defaultName}
+	local setName = function (v) self.name = v end
+	local getName = function () return self.name end
+	return {setName = setName, getName = getName}
+end
 
-
-
-
-
+local objectA = newObject("Jelly")
+objectA.setName("JellyThink")
+print(objectA.getName())
+--]]
+-------------------------------------
 
 
 

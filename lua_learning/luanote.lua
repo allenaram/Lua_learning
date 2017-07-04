@@ -1269,3 +1269,59 @@ print(objectA.getName())
 
 
 
+
+
+
+
+
+
+
+
+------------------------------------------数据库访问-------------------------------------------
+
+-- LuaSQL是一个操作库，依靠它，我们可以调用MySQL、Oracle、ODBC等数据库。LuaSQL可以用LuaRocks安装
+-- 以下代码以MySQL数据库的调用为例。实际操作时，还是用SQL语句操作数据库
+
+----------------------------------------------------------------------------------------------
+
+
+
+-----------调用MySQL数据库------------
+--[[
+-- 不错的SQL入门教程：http://www.cnblogs.com/mr-wid/archive/2013/05/09/3068229.html
+-- lua调用musql库：http://www.yiibai.com/lua/lua_database_access.html
+
+mysql = require "luasql.mysql"										-- 导入mysql的lua操作库
+
+local env  = mysql.mysql()											-- 创建一个mySQL环境
+local conn = env:connect('samp_db','root','allen123')				-- 与库建立连接
+--print(env,conn)
+
+--conn:execute[[set names gbk]]										-- 设置数据库的编码格式，不知为何设置utf8无法输入中文
+
+--status,errorString = conn:execute([[CREATE TABLE sample2
+--(id INTEGER primary key, name char(8));]])						-- 创建表，返回成功与否与错误信息
+
+--conn:execute([[insert into sample2 values(1,"大卫");]])			-- 添加元组
+
+--conn:execute([[update sample2 set name='铁柱' where name='大卫';]])-- 修改元组
+
+--conn:execute([[delete from sample2 where name='铁柱';]])			-- 删除元组
+
+cursor,errorString=conn:execute([[select * from sample2]])			-- 选择元组，返回一个‘游标’
+row= cursor:fetch({},'all')											-- fetch函数可根据游标遍历表
+while row do
+	print(string.format('ID:%s,Name:%s',row.id,row.name))
+	row=cursor:fetch(row,'all')
+end
+
+cursor:close()
+conn:close()
+env:close()
+--]]
+--------------------------------------
+
+
+
+
+
